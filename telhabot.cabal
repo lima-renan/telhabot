@@ -25,8 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      DataBaseFunctions
       Lib
-      Model
+      Schema
   other-modules:
       Paths_telhabot
   hs-source-dirs:
@@ -36,6 +37,7 @@ library
     , esqueleto
     , monad-control
     , monad-logger
+    , mtl
     , persistent
     , persistent-postgresql
     , persistent-template
@@ -44,6 +46,7 @@ library
     , text
     , time
     , transformers
+    , unliftio-core
   default-language: Haskell2010
 
 executable telhabot-exe
@@ -58,6 +61,7 @@ executable telhabot-exe
     , esqueleto
     , monad-control
     , monad-logger
+    , mtl
     , persistent
     , persistent-postgresql
     , persistent-template
@@ -67,6 +71,7 @@ executable telhabot-exe
     , text
     , time
     , transformers
+    , unliftio-core
   default-language: Haskell2010
 
 test-suite telhabot-test
@@ -82,6 +87,7 @@ test-suite telhabot-test
     , esqueleto
     , monad-control
     , monad-logger
+    , mtl
     , persistent
     , persistent-postgresql
     , persistent-template
@@ -91,4 +97,5 @@ test-suite telhabot-test
     , text
     , time
     , transformers
+    , unliftio-core
   default-language: Haskell2010

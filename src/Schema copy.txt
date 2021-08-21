@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds                  #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE DerivingStrategies         #-}
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -13,18 +14,20 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-module Model where
+module Schema where
 
-import Data.Text
+import Control.Monad.IO.Class
+import qualified Data.Text as T
 import Data.Time
 import Database.Persist.Sql
 import Database.Persist.TH
+import GHC.Generics (Generic)
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
     User
         userId Int
-        username Text Maybe
+        username T.Text Maybe
         created UTCTime default=now()
         Primary userId
         deriving Show
@@ -32,22 +35,22 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
     Message
         messageId Int
         userId UserId
-        text Text
+        text T.Text
         sent UTCTime default=now()
         UniqueMsgUser messageId userId
         deriving Show
 
     Countryref
-        country Text
-        countryNamePt Text
-        initials Text
-        nationality Text
+        country T.Text
+        countryNamePt T.Text
+        initials T.Text
+        nationality T.Text
         Primary country
         deriving Show
 
 
     Countrydata
-        country CountryrefId
+        countryName T.Text
         cases Int
         confirmed Int
         deaths Int
@@ -57,8 +60,8 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
     Statedata
         uid Int
-        uf Text
-        state Text
+        uf T.Text
+        state T.Text
         cases Int
         deaths Int
         suspects Int
@@ -67,12 +70,24 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         Primary uid
         deriving Show Eq
 
+    Income
+      source T.Text
+      amount Double
+      when   UTCTime
+      deriving Show Eq
+      
+    Expense
+      towhom T.Text
+      amount Double
+      when   UTCTime
+      deriving Show Eq
+
 |]
 
-doMigration :: SqlPersistT IO ()
+doMigration :: MonadIO m => SqlPersistT m ()
 doMigration = runMigration migrateAll
 
-{- data State = State {
+data State = State {
     uid       :: !(Maybe Int)
   , uf        :: !(Maybe T.Text)
   , state     :: !(Maybe T.Text)
@@ -96,4 +111,5 @@ data CountriesN = CountriesN{
    gentilico      :: T.Text 
  , nome_pais      :: T.Text 
  , nome_pais_int  :: T.Text 
- , sigla          :: T.Text -}
+ , sigla          :: T.Text
+}deriving (Show, Generic)

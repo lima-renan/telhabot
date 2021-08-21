@@ -33,6 +33,7 @@ dependencies:
 - text
 - time
 - transformers
+- unliftio-core
 
 library:
   source-dirs: src

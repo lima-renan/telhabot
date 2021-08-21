@@ -1,0 +1,112 @@
+{-# LANGUAGE AllowAmbiguousTypes   #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE Rank2Types            #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TypeFamilies          #-}
+
+module DataBaseFunctions where
+
+import Control.Monad.IO.Class
+import Control.Monad.IO.Unlift
+import Control.Monad.Logger
+import Control.Monad.Trans.Control
+import Control.Monad.Trans.Reader
+
+import qualified Data.Text as T
+import Data.Time
+import Data.Maybe
+
+import Database.Persist.Postgresql (withPostgresqlConn, createPostgresqlPool)
+import Database.Esqueleto.Legacy
+import Schema
+
+
+runDb :: (MonadUnliftIO m, MonadBaseControl IO m) => ReaderT SqlBackend (LoggingT m) a -> m a
+runDb query = do
+  -- Yep, you read that right.
+  -- There's password and username hardcoded for db in here.
+  let con = "host=localhost port=5432 user=star dbname=habot password=wader"
+  runStderrLoggingT $ withPostgresqlConn con $ \backend -> runReaderT query backend
+
+doingMigration :: (MonadUnliftIO m, MonadBaseControl IO m, MonadLoggerIO m) => m ()
+doingMigration = do
+  let con = "host=localhost port=5432 user=star dbname=habot password=wader"
+  pool <- createPostgresqlPool con 10
+  liftIO $ runSqlPool doMigration pool
+
+
+searchCountry :: (MonadBaseControl IO m, MonadUnliftIO m) => T.Text -> m [Countrydata]
+searchCountry namectr = do
+  countries <-
+    runDb $
+    select $
+    from $ \ctr -> do
+      where_ (ctr ^. CountrydataCountryName ==. val namectr)
+      return ctr
+  return $ map entityVal countries
+
+
+
+
+
+
+insertIncome :: T.Text -> Double -> IO (Key Income)
+insertIncome source amount = do
+  now <- getCurrentTime
+  runDb $ insert $ Income source amount now
+
+insertExpense :: T.Text -> Double -> IO (Key Expense)
+insertExpense towhom amount = do
+  now <- getCurrentTime
+  runDb $ insert $ Expense towhom amount now
+
+searchIncomeBySource ::
+  (MonadBaseControl IO m, MonadUnliftIO m) => T.Text -> m [Income]
+searchIncomeBySource source = do
+  incomes <-
+    runDb $
+    select $
+    from $ \inc -> do
+      where_ (inc ^. IncomeSource ==. val source)
+      limit 10
+      orderBy [desc (inc ^. IncomeWhen)]
+      return inc
+  return $ map entityVal incomes
+{- 
+totalExpense ::
+     ( BaseBackend backend ~ SqlBackend,
+       PersistUniqueRead backend
+     , PersistQueryRead backend
+     , IsPersistBackend backend
+     , MonadIO m
+     )
+  => ReaderT backend m Double
+totalExpense = do
+  res <- 
+    select $ 
+    from $ \exp -> return $ joinV $ sum_ (exp ^. ExpenseAmount)
+  return $ head $ map (fromJust . unValue) res
+
+totalIncome ::
+     ( BaseBackend backend ~ SqlBackend,
+       PersistUniqueRead backend
+     , PersistQueryRead backend
+     , IsPersistBackend backend
+     , MonadIO m
+     )
+  => ReaderT backend m Double
+totalIncome = do
+  res <- 
+    select $
+      from $ \inc -> return $ joinV $ sum_ (inc ^. IncomeAmount)
+  return $ head $ map (fromJust . unValue) res
+
+balance :: IO Double
+balance = do
+  inc <- runDb totalIncome
+  exp <- runDb totalExpense
+  return $ inc - exp
+ -}

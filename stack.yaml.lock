@@ -18,6 +18,13 @@ packages:
       sha256: cb02eea7894a94e5dedf5cb74fd5fc6b989711ebb46a0e14d77f74f3b89dcbe0
   original:
     hackage: servant-multipart-client-0.12.1
+- completed:
+    hackage: unliftio-core-0.2.0.1@sha256:f9abcdd3f3d28e4840563efb7b8760d2de9b5707bcd6f53a87f6a0d77bb5a9f7,1082
+    pantry-tree:
+      size: 328
+      sha256: 9955bc1336dd07c94928892f1a97aed6e5fe63a4242f089a0efd2e95174490ea
+  original:
+    hackage: unliftio-core-0.2.0.1
 snapshots:
 - completed:
     size: 585817

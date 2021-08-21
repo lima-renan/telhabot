@@ -1,0 +1,179 @@
+{-# LANGUAGE OverloadedStrings          #-}
+
+
+module Lib
+    ( someFunc
+    ) where
+
+import DataBaseFunctions
+import Schema
+
+import Control.Applicative ((<|>))
+import Data.Maybe
+import qualified Data.Text as T
+import Telegram.Bot.API
+import Telegram.Bot.Simple
+import Telegram.Bot.Simple.UpdateParser
+
+data ChatState
+  = InsertingIncome
+  | InsertingIncomeSavedSource T.Text
+  | InsertingExpense
+  | InsertingExpenseSavedSource T.Text
+  | SearchingIncome
+  | SearchingExpense
+  | CheckingBalance
+  | Other T.Text
+  | EmptyContent
+  deriving (Show, Eq)
+
+
+newtype ChatModel =
+  ChatModel ChatState
+  deriving (Show, Eq)
+
+emptyChatModel :: ChatModel
+emptyChatModel = ChatModel EmptyContent
+
+data Action
+  = Empty
+  | ActHelp
+  | ActBalance
+  | ActAddInc
+  | ActAddExp
+  | ActSearchIncome
+  | ActSearchExpense
+  | ActAddMessage T.Text
+  deriving (Show, Read)
+
+incexpBotApp :: BotApp ChatModel Action
+incexpBotApp = BotApp
+  { botInitialModel = emptyChatModel
+  , botAction = flip updateToAction
+  , botHandler = updateHandler
+  , botJobs = []
+  }
+
+updateToAction :: ChatModel -> Update -> Maybe Action
+updateToAction _ = parseUpdate $
+  ActHelp <$ command (T.pack "help") <|>
+  ActBalance <$ command (T.pack "balance") <|>
+  ActAddInc <$ command (T.pack "income") <|>
+  ActAddExp <$ command (T.pack "expense") <|>
+  ActSearchIncome <$  command (T.pack "incomes") <|>
+  ActSearchExpense <$ command (T.pack "expense") <|>
+  ActAddMessage <$> plainText <|>
+  callbackQueryDataRead
+
+replyString :: String -> BotM ()
+replyString = reply . toReplyMessage . T.pack
+
+updateHandler :: Action -> model -> Eff Action ChatModel
+updateHandler action model =
+  case action of
+    Empty -> pure (ChatModel pure)
+
+    ActHelp ->
+     emptyChatModel <# do
+        replyString "Help messages"
+        pure Empty
+    
+    ActBalance ->
+      emptyChatModel <# do
+        liftIO balance >>= replyString . show
+        pure Empty
+
+    ActAddInc ->
+      ChatModel InsertingIncome <# do
+        replyString "Who gave you the money?"
+        pure Empty
+
+    ActAddExp ->
+      ChatModel InsertingExpense <# do
+        replyString "Who did you give it to?"
+        pure Empty
+
+    ActSearchIncome ->
+     ChatModel SearchingIncome <# do
+        replyString "Who are you looking for?"
+        pure Empty
+
+    ActSearchExpense ->
+      ChatModel SearchingExpense <# do
+        replyString "Who are you looking for?"
+        pure Empty
+
+    ActAddMessage msg -> messageHandler msg model
+
+messageHandler :: T.Text -> ChatModel -> Eff Action ChatModel
+messageHandler message model = case model of
+
+    ChatModel InsertingExpense -> ChatModel (InsertingExpenseSavedSource message) <# do 
+                                                                                        replyString "How much is it?"
+                                                                                        pure Empty
+    
+    ChatModel (InsertingExpenseSavedSource source) -> 
+     case (readMaybe $ T.unpack message :: Maybe Double) of
+        Nothing -> reasking model
+        Just amount ->
+           ChatModel EmptyContent <# do
+             _ <- liftIO $ insertIncome source amount
+             replyString "Ok, saved!"
+             pure Empty
+        
+    ChatModel InsertingIncome ->
+      ChatModel (InsertingExpenseSavedSource message) <# do
+        replyString "How much is it?"
+        pure Empty
+
+    ChatModel (InsertingIncomeSavedSource source) ->
+      case (readMaybe $ unpack message :: Maybe Double) of
+        Nothing -> reasking model
+        Just amount ->
+          ChatModel EmptyContent <# do
+            _ <- liftIO $ insertIncome source amount
+            replyString "Ok, saved!"
+            pure Empty
+
+    ChatModel SearchingExpense ->
+      ChatModel EmptyContent <# do
+        expenses <- liftIO $ searchExpenseBySource message
+        mapM_ (replyString . show) expenses
+        pure Empty
+
+    ChatModel SearchingIncome ->
+      ChatModel EmptyContent <# do
+        incomes <- liftIO $ searchIncomeBySource message
+        mapM_ (replyString . show) incomes
+        pure Empty
+
+    otherwise ->
+      model <# do
+        reply . toReplyMessage $ helpMessage
+        pure Empty
+
+helpMessage :: T.Text
+helpMessage =
+  intercalate $ T.pack "\n" $
+  map
+    pack
+    [ "/help to show this message."
+    , "/balance to show balance."
+    , "/income to insert income."
+    , "/expense to insert expense."
+    , "/incomes to show incomes from a source."
+    , "/expenses to show expenses to an entity."
+    ]
+
+someFunc :: IO ()
+someFunc = do
+    runStderrLoggingT doingMigration
+    t <- readFile "auth-token.secret"            --"src/auth-token.secret"
+    let tok = T.pack t
+    env <- defaultTelegramClientEnv tok
+    startBot_ (conversationBot updateChatId incexpBotApp) env
+
+
+--https://siskam.link/2018-02-22-telegram-bot-and-haskell.html
+-- https://medium.com/@misha.kobelev.99/telegram-bot-on-haskell-with-db-connection-e0031f109166
+-- https://github.com/mike-kob/HaskellBot/blob/master/app/Main.hs
