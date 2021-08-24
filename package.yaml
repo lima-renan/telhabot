@@ -20,8 +20,13 @@ extra-source-files:
 description:         Please see the README on GitHub at <https://github.com/githubuser/telhabot#readme>
 
 dependencies:
+- aeson
 - base >= 4.7 && < 5
+- base-compat >= 0.11.2
+- bytestring 
+- deepseq
 - esqueleto
+- http-conduit
 - monad-control
 - monad-logger
 - mtl
@@ -33,7 +38,10 @@ dependencies:
 - text
 - time
 - transformers
+- unliftio
 - unliftio-core
+
+
 
 library:
   source-dirs: src
