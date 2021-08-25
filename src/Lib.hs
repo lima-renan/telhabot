@@ -6,6 +6,7 @@
 -- https://siskam.link/2018-02-22-telegram-bot-and-haskell.html
 -- https://medium.com/@misha.kobelev.99/telegram-bot-on-haskell-with-db-connection-e0031f109166
 -- https://github.com/mike-kob/HaskellBot/blob/master/app/Main.hs
+-- https://gist.github.com/tfausak/cdcc2e33c9c418278262650eb96b7b05
 
 module Lib where
 
@@ -42,7 +43,7 @@ botStartup :: IO ()
 botStartup
     -- logging
  = do
-  env_token <- liftIO $ readFile "auth-token.secret"  
+  env_token <- liftIO $ readFile "./src/auth-token.secret"  
   let token = Token . pack $ env_token
   env <- defaultTelegramClientEnv token
   startBot_ (conversationBot updateChatId incexpBotApp) env
