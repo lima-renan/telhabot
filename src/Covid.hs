@@ -108,6 +108,8 @@ newtype States = States {
   states :: [State] 
 } deriving Show
 
+toState :: States -> [State]
+toState (States st) = st
                      
 instance FromJSON States where
     parseJSON (Object v) = do
@@ -166,6 +168,8 @@ newtype Countries = Countries {
   countries :: [Country] 
 } deriving Show
 
+toCountry :: Countries -> [Country]
+toCountry (Countries ct) = ct
                      
 instance FromJSON Countries where
   parseJSON (Object v) = do
@@ -202,8 +206,8 @@ instance FromJSON Countries where
 ] -}
 
 
-instance FromJSON CountriesNames where
-  parseJSON (Object v) = CountriesNames 
+instance FromJSON CountryName where
+  parseJSON (Object v) = CountryName 
            <$> v .: "gentilico"
            <*> v .: "nome_pais"
            <*> v .: "nome_pais_int"
@@ -273,14 +277,44 @@ isNot :: T.Text -> Bool
 isNot = ("não" `T.isPrefixOf`) . T.toLower
 -}
 
+jsonCountriesN :: IO ()
+jsonCountriesN = do
+  d <- (eitherDecode <$> getJSON) :: IO (Either String [CountryName])
+  case d of
+      Left err   ->  TIO.putStrLn $ T.pack "Erro ao ler dicionário de dados. Erro: " <> T.pack (show err)
+      Right ps -> do 
+                    insertCountriesN ps :: IO ([Key CountryName])
+                    pure()
 
-testjson = do
-        d <- (eitherDecode <$> getJSON) :: IO (Either String [CountriesNames])
-        case d of
-            Left err   ->  TIO.putStrLn $ T.pack "Não consegui ler os dados =( Erro: " <> T.pack (show err)
-            Right ps -> do 
-                          insertCountrieN ps :: IO ([Key CountriesNames])
-                          pure()
+jsonCountries :: IO ()
+jsonCountries = do
+                let countriesurl = "https://covid19-brazil-api.now.sh/api/report/v1/countries"
+                d <- (eitherDecode <$> getJSONurl countriesurl) :: IO (Either String Countries)
+                case d of
+                    Left err ->  TIO.putStrLn $ T.pack "Erro ao ler dados de países. Erro: " <> T.pack (show err)
+                    Right ps -> do 
+                                  insertCountries (toCountry ps) :: IO ([Key Country])
+                                  pure()
+jsonStates :: IO ()
+jsonStates = do
+  let statesurl = "https://covid19-brazil-api.now.sh/api/report/v1"
+  d <- (eitherDecode <$> getJSONurl statesurl) :: IO (Either String States)
+  case d of
+      Left err ->  TIO.putStrLn $ T.pack "Erro ao ler dados de estados. Erro: " <> T.pack (show err)
+      Right ps -> do 
+                    insertStates (toState ps) :: IO ([Key State])
+                    pure()
+
+
+jsonCovid :: IO ()
+jsonCovid = do
+  response <- httpLBS "https://covid19-brazil-api.now.sh/api/status/v1"
+  case getResponseStatusCode response of 
+    200 -> do
+            jsonCountries
+            jsonStates
+            pure()
+    _ -> TIO.putStrLn $ T.pack "Dados não disponíveis no momento =(" 
  
 
 

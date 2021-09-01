@@ -78,7 +78,7 @@ handleAction action model =
         maybeUser <- liftIO $ getUserById usrId
         now <- liftIO getCurrentTime
         case maybeUser of
-          Just user -> liftIO $ testjson
+          Just user -> liftIO $ jsonCountriesN >> jsonCovid
           Nothing -> do
             userKy <- liftIO $ createUser (Schema.User usrId usrname now)
             replyString "Hi. Nice to meet you, I'm a simple bot that records msgs. Recording your msg..."

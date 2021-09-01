@@ -43,20 +43,22 @@ insertMsg :: Message -> IO (Key Message)
 insertMsg msg = do
   runDb $ insert msg
 
-insertState :: State -> IO (Key State)
-insertState st = do
-  runDb $ insert st
+insertStates :: [State] -> IO ([Key State])
+insertStates st = do
+  runDb $ mapM insert st
 
-insertCountrieN :: [CountriesNames] -> IO ([Key CountriesNames])
-insertCountrieN ct = do
+insertCountriesN :: [CountryName] -> IO ([Key CountryName])
+insertCountriesN ct = do
   runDb $ mapM insert ct
 
-{- insertCountriesN :: [CountriesNames] -> IO (Key CountriesNames)
-insertCountriesN [c] = insertCountrieN c
-insertCountriesN (cx:cs) = insertCountrieN cx >> insertCountriesN cs  -}
+insertCountries :: [Country] -> IO ([Key Country])
+insertCountries ct = do
+  runDb $ mapM insert ct
 
-selectCount :: IO [Value Int64]
-selectCount = runDb $ select $ distinct $  from $ \(countries_names :: SqlExpr (Entity CountriesNames)) -> return countRows
+
+
+countCountriesN :: IO [Value Int64]
+countCountriesN = runDb $ select $ distinct $ from $ \(country_name :: SqlExpr (Entity CountryName)) -> return countRows
 
 
 

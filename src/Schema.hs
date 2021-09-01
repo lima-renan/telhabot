@@ -51,7 +51,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         UniqueMsgUser messageId userId
         deriving Show
 
-    CountriesNames
+    CountryName
         nationality  T.Text
         countryNamePt T.Text
         country T.Text
@@ -61,22 +61,22 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
     Country
         countryName T.Text
-        cases Int
-        confirmed Int
-        deaths Int
-        recovered Int
-        updatedAt UTCTime
+        cases Int Maybe
+        confirmed Int Maybe
+        deaths Int Maybe
+        recovered Int Maybe
+        updatedAt UTCTime Maybe
         deriving Show Read Eq
 
     State
         uid Int
         uf T.Text
         state T.Text
-        cases Int
-        deaths Int
-        suspects Int
-        refuses Int
-        updatedAt UTCTime
+        cases Int Maybe
+        deaths Int Maybe
+        suspects Int Maybe
+        refuses Int Maybe
+        updatedAt UTCTime Maybe
         Primary uid
         deriving Show Read Eq
 
