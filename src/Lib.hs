@@ -11,6 +11,7 @@
 module Lib where
 
 import DataBaseFunctions
+import           Covid
 import Schema
 
 
@@ -47,6 +48,7 @@ botStartup
   let token = Token . pack $ env_token
   env <- defaultTelegramClientEnv token
   startBot_ (conversationBot updateChatId incexpBotApp) env
+  
 
 emptyChatModel :: ChatModel
 emptyChatModel = ChatModel InitSate
@@ -76,7 +78,7 @@ handleAction action model =
         maybeUser <- liftIO $ getUserById usrId
         now <- liftIO getCurrentTime
         case maybeUser of
-          Just user -> replyString "Hi again. Recording your msg..."
+          Just user -> liftIO $ testjson
           Nothing -> do
             userKy <- liftIO $ createUser (Schema.User usrId usrname now)
             replyString "Hi. Nice to meet you, I'm a simple bot that records msgs. Recording your msg..."
@@ -87,3 +89,21 @@ handleAction action model =
 replyString :: String -> BotM ()
 replyString = reply . toReplyMessage . pack
 
+
+{- 
+handleAction :: Action -> ChatModel -> Eff Action ChatModel
+handleAction action model =
+  case action of
+    NoAction -> pure model
+    RecordMsg usrId usrname msgId txt ->
+      model <# do
+        maybeUser <- liftIO $ getUserById usrId
+        now <- liftIO getCurrentTime
+        case maybeUser of
+          Just user -> replyString "Hi again. Recording your msg..."
+          Nothing -> do
+            userKy <- liftIO $ createUser (Schema.User usrId usrname now)
+            replyString "Hi. Nice to meet you, I'm a simple bot that records msgs. Recording your msg..."
+        _ <- liftIO $ insertMsg $ Schema.Message msgId (Schema.UserKey usrId) txt now
+        replyString "Done"
+        pure NoAction -}

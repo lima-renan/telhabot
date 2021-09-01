@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 
 module DataBaseFunctions where
@@ -10,9 +9,8 @@ import           Control.Monad.Logger        (LogLevel (..), LoggingT,
                                               filterLogger, runStdoutLoggingT)
 import           Control.Monad.Reader        (ReaderT, runReaderT,forM)
 import           Control.Monad.IO.Unlift
-import           Data.Int (Int64)
 import           qualified Data.Text as T                
-import           Database.Esqueleto.Legacy
+import           Database.Esqueleto
 import           qualified Database.Persist            (Entity (..), delete, get, insert)
 import           Database.Persist.Postgresql
 
@@ -27,46 +25,54 @@ logFilter _ LevelInfo      = True
 logFilter _ LevelDebug     = False
 logFilter _ (LevelOther _) = False
 
-runDb :: SqlPersistT (LoggingT IO) a -> IO a
+runDb :: MonadUnliftIO m => ReaderT SqlBackend (LoggingT m) a -> m a
 runDb query = do
   runStdoutLoggingT $ filterLogger logFilter $ withPostgresqlConn connStr $ \backend -> runReaderT query backend
 
 getUserById :: Int -> IO (Maybe User)
 getUserById uid = do
-  runDb $ get $ UserKey (fromIntegral uid)
+  runDb action
+  where
+    action :: SqlPersistT (LoggingT IO) (Maybe User)
+    action = get $ UserKey (fromIntegral uid)
 
 createUser :: User -> IO (Key User)
 createUser user = do
-  runDb $ insert user
+  runDb action
+  where
+    action :: SqlPersistT (LoggingT IO) (Key User)
+    action = insert user
 
 insertMsg :: Message -> IO (Key Message)
 insertMsg msg = do
-  runDb $ insert msg
+  runDb action
+  where
+    action :: SqlPersistT (LoggingT IO) (Key Message)
+    action = insert msg
 
 insertState :: State -> IO (Key State)
 insertState st = do
-  runDb $ insert st
-
-insertCountrieN :: [CountriesNames] -> IO ([Key CountriesNames])
-insertCountrieN ct = do
-  runDb $ mapM insert ct
-
-{- insertCountriesN :: [CountriesNames] -> IO (Key CountriesNames)
-insertCountriesN [c] = insertCountrieN c
-insertCountriesN (cx:cs) = insertCountrieN cx >> insertCountriesN cs  -}
-
-selectCount :: IO [Value Int64]
-selectCount = runDb $ select $ distinct $  from $ \(countries_names :: SqlExpr (Entity CountriesNames)) -> return countRows
-
-
-
-{- selectCount:: IO [(Entity CountriesNames)]
-selectCount = runDb $ selectionAction
+  runDb action
   where
-    selectionAction :: SqlPersistT (LoggingT IO) [(Entity CountriesNames)]
-    selectionAction = select . from $ \countries_names -> do
-      return (countries_names)
- -}
+    action :: SqlPersistT (LoggingT IO) (Key State)
+    action = insert st
+
+insertCountrieN :: CountriesNames -> IO (Key CountriesNames)
+insertCountrieN ct = do
+  runDb action
+  where
+    action :: SqlPersistT (LoggingT IO) (Key CountriesNames)
+    action = insert ct
+
+insertCountriesN :: [CountriesNames] -> IO (Key CountriesNames)
+insertCountriesN [c] = insertCountrieN c
+insertCountriesN (cx:cs) = insertCountrieN cx >> insertCountriesN cs 
+
+
+{- selectAction :: SqlPersistT (LoggingT IO) (Maybe CountriesNames)
+selectAction = ((fmap entityVal) . listToMaybe) <$> (select . from $ \countries_names -> do
+  where_ (articles ^. CountriesNamesId ==. val (toSqlKey aid))
+  return articles) -}
 
 
 --https://stackoverflow.com/questions/24020739/what-is-a-correct-way-of-doing-countid-in-esqueleto-and-yesod

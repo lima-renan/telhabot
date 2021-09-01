@@ -40,13 +40,13 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         UniqueMsgUser messageId userId
         deriving Show
 
-    Countryref
+    CountriesNames
         country T.Text
         countryNamePt T.Text
         initials T.Text
         nationality T.Text
         Primary country
-        deriving Show
+        deriving Show Read Eq
 
 
     Countrydata
@@ -56,7 +56,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         deaths Int
         recovered Int
         updatedAt UTCTime
-        deriving Show Eq
+        deriving Show Read Eq
 
     Statedata
         uid Int
@@ -68,7 +68,7 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
         refuses Int
         updatedAt UTCTime
         Primary uid
-        deriving Show Eq
+        deriving Show Read Eq
 
     Income
       source T.Text
